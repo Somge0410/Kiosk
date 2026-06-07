@@ -16,30 +16,55 @@ with open("/home/aaron_elgin/Kiosk/lichess_autoplay.js", "r") as f:
     custom_js = f.read()
 
 # Extra CSS: hide heavy/nonessential UI parts and reduce animations
-custom_css = """
-* {
-    animation: none !important;
-    transition: none !important;
-    scroll-behavior: auto !important;
-}
-
+custom_css = custom_css = """
+#top,
 .site-title,
+.site-nav,
 .site-buttons,
-.lobby__app__content,
-.chat__members,
-.mchat,
-#friend_box,
-.site-buttons,
-.dasher,
-.notifications,
-.streamer-box,
-.underboard,
+.site-menu,
+header,
+nav,
+.round__side,
 .round__underboard,
+.underboard,
+.mchat,
+.chat,
+.crosstable,
 .tv-history,
-.tour__standing,
 .ad,
 .ads {
     display: none !important;
+}
+
+# html,
+# body {
+#     margin: 0 !important;
+#     padding: 0 !important;
+#     overflow: hidden !important;
+# }
+
+main,
+.round {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.round__app {
+    width: min(96vw, 96vh) !important;
+    height: min(96vw, 96vh) !important;
+    max-width: none !important;
+    max-height: none !important;
+}
+
+* {
+    animation: none !important;
+    transition: none !important;
 }
 """
 
