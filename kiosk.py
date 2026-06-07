@@ -134,11 +134,25 @@ main.analyse > .analyse__tools {
     overflow: auto !important;
 }
 
+main.round > .round__side {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: stretch !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+}
+
+main.round > .round__side .mchat {
+    display: none !important;
+}
+
 #kiosk-round-dock {
     margin-top: 10px;
     display: flex;
     flex-direction: column;
     gap: 10px;
+    flex: 0 0 auto;
 }
 
 #kiosk-round-dock .rclock,
