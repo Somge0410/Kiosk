@@ -53,7 +53,7 @@ body {
 :root {
     --kiosk-pad: 8px;
     --kiosk-gap: 12px;
-    --kiosk-side: clamp(260px, 23vw, 330px);
+    --kiosk-side: clamp(200px, 18vw, 270px);
     --kiosk-board: min(
         calc(100vh - 16px),
         calc(100vw - var(--kiosk-side) - 28px)
