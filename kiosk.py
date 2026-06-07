@@ -7,12 +7,15 @@ os.environ["WEBKIT_DISABLE_DMABUF_RENDERER"] = "1"
 import gi
 gi.require_version("Gtk", "3.0")
 gi.require_version("WebKit2", "4.1")
-from gi.repository import Gtk, WebKit2, GLib
+from gi.repository import Gtk, WebKit2
 
 
 URL = "https://lichess.org/@/AaronsEngine/tv"
 
-with open("/home/aaron_elgin/Kiosk/lichess_autoplay.js", "r") as f:
+script_dir = os.path.dirname(os.path.abspath(__file__))
+autoplay_js_path = os.path.join(script_dir, "lichess_autoplay.js")
+
+with open(autoplay_js_path, "r", encoding="utf-8") as f:
     custom_js = f.read()
 
 # Extra CSS: hide clutter and force a stable board + side layout.
@@ -198,6 +201,40 @@ main.analyse > .analyse__tools > * {
 
 content_manager = WebKit2.UserContentManager.new()
 
+# Keep WebKit in a lower-memory profile for kiosk use.
+web_context = WebKit2.WebContext.get_default()
+
+
+def try_call(obj, name, *args):
+    method = getattr(obj, name, None)
+    if method:
+        try:
+            method(*args)
+        except Exception:
+            pass
+
+
+cache_model = getattr(WebKit2.CacheModel, "DOCUMENT_VIEWER", None)
+if cache_model is not None:
+    try_call(web_context, "set_cache_model", cache_model)
+
+process_model = None
+for enum_owner in ("ProcessModel", "WebProcessModel"):
+    enum_type = getattr(WebKit2, enum_owner, None)
+    if enum_type is None:
+        continue
+
+    process_model = getattr(enum_type, "SHARED_SECONDARY_PROCESS", None)
+    if process_model is not None:
+        break
+
+if process_model is not None:
+    try_call(web_context, "set_process_model", process_model)
+
+try_call(web_context, "set_web_process_count_limit", 1)
+try_call(web_context, "set_spell_checking_enabled", False)
+try_call(web_context, "set_favicon_database_directory", "")
+
 user_script = WebKit2.UserScript.new(
     custom_js,
     WebKit2.UserContentInjectedFrames.ALL_FRAMES,
@@ -241,6 +278,13 @@ try_set("set_enable_webaudio", False)
 try_set("set_enable_page_cache", False)
 try_set("set_enable_offline_web_application_cache", False)
 try_set("set_enable_html5_database", False)
+try_set("set_enable_hyperlink_auditing", False)
+try_set("set_enable_dns_prefetching", False)
+try_set("set_enable_back_forward_navigation_gestures", False)
+try_set("set_enable_resizable_text_areas", False)
+try_set("set_allow_modal_dialogs", False)
+try_set("set_enable_webgl", False)
+try_set("set_enable_webgl2", False)
 
 # Do NOT disable JavaScript; Lichess will break.
 # You can test this, but it may break piece/board rendering:

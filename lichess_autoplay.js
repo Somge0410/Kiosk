@@ -10,32 +10,127 @@
 (function () {
     "use strict";
 
-    const STEP_DELAY_MS = 2500;       // Time between moves
-    const START_DELAY_MS = 1000;      // Wait after jumping to start
-    const END_PAUSE_MS = 10000;       // Wait at end, then replay from start
-    const DOM_SETTLE_MS = 250;        // Wait after key press before checking active move
-    const CHECK_DEBOUNCE_MS = 2000;   // Avoid checking too often after DOM changes
-    const SAFETY_CHECK_MS = 15000;    // Slow fallback check
+    const STEP_DELAY_MS = 2500;       // Time between moves during replay
+    const START_DELAY_MS = 900;       // Wait after reset-to-start
+    const END_PAUSE_MS = 10000;       // Pause at game end before restarting replay
+    const REPLAY_WATCH_MS = 2500;     // Low-cost polling for game state changes
 
     let replaying = false;
-    let replayTimer = null;
+    let stepTimer = null;
     let restartTimer = null;
-    let checkTimer = null;
+
+    function clearTimer(timerId) {
+        if (timerId !== null) {
+            clearTimeout(timerId);
+        }
+    }
+
+    function isVisible(el) {
+        if (!el || !el.isConnected) return false;
+
+        const style = getComputedStyle(el);
+        if (style.display === "none" || style.visibility === "hidden") return false;
+
+        const rect = el.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+    }
+
+    function getReplayControls() {
+        const buttons = Array.from(document.querySelectorAll("button.fbt.repeatable"))
+            .filter(isVisible);
+
+        if (buttons.length < 4) return null;
+
+        // Lichess order: first, prev, next, last
+        return {
+            first: buttons[0],
+            prev: buttons[1],
+            next: buttons[2],
+            last: buttons[3]
+        };
+    }
+
+    function clickControl(button) {
+        if (!button || button.disabled) return false;
+
+        const rect = button.getBoundingClientRect();
+        const clientX = Math.round(rect.left + rect.width / 2);
+        const clientY = Math.round(rect.top + rect.height / 2);
+
+        const pointerInit = {
+            bubbles: true,
+            cancelable: true,
+            composed: true,
+            pointerId: 1,
+            pointerType: "mouse",
+            isPrimary: true,
+            button: 0,
+            buttons: 1,
+            clientX,
+            clientY
+        };
+
+        const mouseDownInit = {
+            bubbles: true,
+            cancelable: true,
+            button: 0,
+            buttons: 1,
+            clientX,
+            clientY
+        };
+
+        const mouseUpInit = {
+            bubbles: true,
+            cancelable: true,
+            button: 0,
+            buttons: 0,
+            clientX,
+            clientY
+        };
+
+        try {
+            if (typeof PointerEvent === "function") {
+                button.dispatchEvent(new PointerEvent("pointerdown", pointerInit));
+            }
+
+            button.dispatchEvent(new MouseEvent("mousedown", mouseDownInit));
+            button.dispatchEvent(new MouseEvent("mouseup", mouseUpInit));
+            button.dispatchEvent(new MouseEvent("click", mouseUpInit));
+
+            if (typeof PointerEvent === "function") {
+                button.dispatchEvent(new PointerEvent("pointerup", {
+                    ...pointerInit,
+                    buttons: 0
+                }));
+            }
+        } catch (_) {
+            return false;
+        }
+
+        return true;
+    }
 
     function pressKey(key, keyCode) {
-        document.body.dispatchEvent(new KeyboardEvent("keydown", {
+        const eventInit = {
             key: key,
             code: key,
             keyCode: keyCode,
             which: keyCode,
             bubbles: true,
             cancelable: true
-        }));
-    }
+        };
 
-    function clearTimer(timer) {
-        if (timer !== null) {
-            clearTimeout(timer);
+        const targets = [
+            document.activeElement,
+            document.body,
+            document,
+            window
+        ];
+
+        for (const target of targets) {
+            if (!target || typeof target.dispatchEvent !== "function") continue;
+
+            target.dispatchEvent(new KeyboardEvent("keydown", eventInit));
         }
     }
 
@@ -44,18 +139,28 @@
     }
 
     function isAtLastMove() {
-        const moves = document.querySelectorAll("m");
+        const controls = getReplayControls();
+        if (controls) {
+            return controls.next.disabled;
+        }
+
+        const moves = document.querySelectorAll("m, move, rm6 kwdb");
         if (!moves.length) return false;
 
-        const lastMove = moves[moves.length - 1];
-        return lastMove.classList.contains("active");
+        const activeMove =
+            document.querySelector("m.active") ||
+            document.querySelector("move.active") ||
+            document.querySelector("rm6 kwdb.a1t");
+
+        if (!activeMove) return false;
+        return activeMove === moves[moves.length - 1];
     }
 
     function stopReplay() {
-        clearTimer(replayTimer);
+        clearTimer(stepTimer);
         clearTimer(restartTimer);
 
-        replayTimer = null;
+        stepTimer = null;
         restartTimer = null;
         replaying = false;
     }
@@ -66,8 +171,6 @@
         restartTimer = setTimeout(() => {
             restartTimer = null;
 
-            // Only restart replay if the game is still finished.
-            // If a new live game started meanwhile, do nothing.
             if (gameLooksFinished()) {
                 startReplay();
             } else {
@@ -76,83 +179,67 @@
         }, END_PAUSE_MS);
     }
 
+    function jumpToStart() {
+        const controls = getReplayControls();
+        if (controls && clickControl(controls.first)) {
+            return;
+        }
+
+        pressKey("ArrowUp", 38);
+    }
+
+    function stepForward() {
+        const controls = getReplayControls();
+        if (controls && clickControl(controls.next)) {
+            return;
+        }
+
+        pressKey("ArrowRight", 39);
+    }
+
     function replayStep() {
         if (!replaying) return;
 
-        // A new live game probably started.
         if (!gameLooksFinished()) {
             stopReplay();
             return;
         }
 
-        pressKey("ArrowRight", 39);
+        if (isAtLastMove()) {
+            replaying = false;
+            stepTimer = null;
+            scheduleRestartFromBeginning();
+            return;
+        }
 
-        replayTimer = setTimeout(() => {
-            if (!replaying) return;
-
-            if (!gameLooksFinished()) {
-                stopReplay();
-                return;
-            }
-
-            if (isAtLastMove()) {
-                replaying = false;
-                replayTimer = null;
-                scheduleRestartFromBeginning();
-                return;
-            }
-
-            replayTimer = setTimeout(replayStep, STEP_DELAY_MS);
-        }, DOM_SETTLE_MS);
+        stepForward();
+        stepTimer = setTimeout(replayStep, STEP_DELAY_MS);
     }
 
     function startReplay() {
         if (replaying) return;
         if (!gameLooksFinished()) return;
 
-        clearTimer(replayTimer);
+        clearTimer(stepTimer);
         clearTimer(restartTimer);
 
         replaying = true;
 
-        // Jump to beginning of the finished game.
-        pressKey("ArrowUp", 38);
-
-        replayTimer = setTimeout(replayStep, START_DELAY_MS);
+        jumpToStart();
+        stepTimer = setTimeout(replayStep, START_DELAY_MS);
     }
 
-    function scheduleStatusCheck() {
-        if (checkTimer !== null) return;
-
-        checkTimer = setTimeout(() => {
-            checkTimer = null;
-
-            if (gameLooksFinished()) {
-                startReplay();
-            } else if (replaying || restartTimer !== null) {
-                stopReplay();
-            }
-        }, CHECK_DEBOUNCE_MS);
+    function watchReplayState() {
+        if (gameLooksFinished()) {
+            startReplay();
+        } else if (replaying || restartTimer !== null) {
+            stopReplay();
+        }
     }
 
-    // Prefer observing the main app area instead of the whole document body.
-    const observerTarget =
-        document.querySelector("main") ||
-        document.querySelector(".round") ||
-        document.body;
-
-    const observer = new MutationObserver(scheduleStatusCheck);
-
-    observer.observe(observerTarget, {
-        childList: true,
-        subtree: true
-    });
-
-    // Initial check.
-    scheduleStatusCheck();
-
-    // Very slow fallback in case Lichess changes without triggering our observer target.
-    setInterval(scheduleStatusCheck, SAFETY_CHECK_MS);
+    watchReplayState();
+    setInterval(watchReplayState, REPLAY_WATCH_MS);
+    window.addEventListener("hashchange", watchReplayState, { passive: true });
 
 })();
 
@@ -160,9 +247,52 @@
     "use strict";
 
     const DOCK_ID = "kiosk-round-dock";
+    const FORCED_BOARD_THEME = "wood4";
+    const MAINTENANCE_MS = 6000;
+
+    const PRUNE_SELECTORS = [
+        "#top",
+        "header",
+        "nav",
+        ".site-title",
+        ".site-nav",
+        ".site-buttons",
+        ".site-menu",
+        ".ad",
+        ".ads",
+        ".tour__standing",
+        ".streamer-box",
+        ".tv-history",
+        ".chat__members",
+        ".mchat",
+        ".round__underboard",
+        ".round__underchat",
+        ".analyse__underboard",
+        ".analyse__round-training",
+        ".analyse__controls",
+        ".analyse__side"
+    ];
 
     function findDirectChild(parent, selector) {
         return Array.from(parent.children).find(el => el.matches(selector)) || null;
+    }
+
+    function applyBoardTheme() {
+        if (!document.body) return;
+
+        if (document.body.dataset.board !== FORCED_BOARD_THEME) {
+            document.body.dataset.board = FORCED_BOARD_THEME;
+        }
+    }
+
+    function pruneHeavyDom() {
+        for (const selector of PRUNE_SELECTORS) {
+            document.querySelectorAll(selector).forEach(el => {
+                if (el.id === DOCK_ID) return;
+                if (!el.isConnected) return;
+                el.remove();
+            });
+        }
     }
 
     function ensureDock(side) {
@@ -209,42 +339,17 @@
         });
     }
 
-    let dockQueued = false;
-
-    function scheduleDock() {
-        if (dockQueued) return;
-        dockQueued = true;
-
-        requestAnimationFrame(() => {
-            dockQueued = false;
-            dockRoundWidgets();
-        });
+    function runMaintenance() {
+        applyBoardTheme();
+        dockRoundWidgets();
+        pruneHeavyDom();
     }
 
-    const dockObserver = new MutationObserver(scheduleDock);
-    dockObserver.observe(document.body, {
-        childList: true,
-        subtree: true
+    runMaintenance();
+    setInterval(runMaintenance, MAINTENANCE_MS);
+    window.addEventListener("hashchange", runMaintenance, { passive: true });
+    document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) runMaintenance();
     });
-
-    scheduleDock();
-    setInterval(scheduleDock, 2000);
-})();
-
-(function () {
-    "use strict";
-
-    const FORCED_BOARD_THEME = "wood4";
-    const THEME_CHECK_MS = 2000;
-
-    function applyBoardTheme() {
-        if (!document.body) return;
-
-        if (document.body.dataset.board !== FORCED_BOARD_THEME) {
-            document.body.dataset.board = FORCED_BOARD_THEME;
-        }
-    }
-
-    applyBoardTheme();
-    setInterval(applyBoardTheme, THEME_CHECK_MS);
+    document.addEventListener("DOMContentLoaded", runMaintenance, { once: true });
 })();
