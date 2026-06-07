@@ -230,3 +230,21 @@
     scheduleDock();
     setInterval(scheduleDock, 2000);
 })();
+
+(function () {
+    "use strict";
+
+    const FORCED_BOARD_THEME = "wood4";
+    const THEME_CHECK_MS = 2000;
+
+    function applyBoardTheme() {
+        if (!document.body) return;
+
+        if (document.body.dataset.board !== FORCED_BOARD_THEME) {
+            document.body.dataset.board = FORCED_BOARD_THEME;
+        }
+    }
+
+    applyBoardTheme();
+    setInterval(applyBoardTheme, THEME_CHECK_MS);
+})();
