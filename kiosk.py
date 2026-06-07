@@ -51,12 +51,12 @@ body {
 }
 
 :root {
-    --kiosk-pad: 8px;
-    --kiosk-gap: 12px;
-    --kiosk-side: clamp(200px, 18vw, 270px);
+    --kiosk-edge: 6px;
+    --kiosk-gap: 10px;
+    --kiosk-side-min: 190px;
     --kiosk-board: min(
-        calc(100vh - 16px),
-        calc(100vw - var(--kiosk-side) - 28px)
+        calc(100vh - (var(--kiosk-edge) * 2)),
+        calc(100vw - var(--kiosk-edge) - var(--kiosk-gap) - var(--kiosk-side-min))
     );
 }
 
@@ -64,17 +64,20 @@ body {
 main.round,
 main.analyse {
     margin: 0 !important;
-    padding: var(--kiosk-pad) !important;
+    padding: var(--kiosk-edge) 0 var(--kiosk-edge) var(--kiosk-edge) !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
     width: 100vw !important;
     max-width: none !important;
     height: 100vh !important;
     box-sizing: border-box !important;
     display: grid !important;
-    grid-template-columns: var(--kiosk-board) var(--kiosk-side) !important;
+    grid-template-columns: var(--kiosk-board) minmax(var(--kiosk-side-min), 1fr) !important;
     grid-template-rows: var(--kiosk-board) !important;
     column-gap: var(--kiosk-gap) !important;
-    justify-content: center !important;
-    align-content: center !important;
+    justify-content: start !important;
+    align-content: start !important;
     align-items: start !important;
     overflow: hidden !important;
 }
@@ -83,6 +86,9 @@ main.round > .round__app,
 main.analyse > .analyse__board {
     grid-column: 1 !important;
     grid-row: 1 !important;
+    justify-self: start !important;
+    align-self: start !important;
+    margin: 0 !important;
     width: var(--kiosk-board) !important;
     height: var(--kiosk-board) !important;
     min-width: 0 !important;
@@ -95,8 +101,9 @@ main.round > .round__side,
 main.analyse > .analyse__tools {
     grid-column: 2 !important;
     grid-row: 1 !important;
-    width: var(--kiosk-side) !important;
-    max-width: var(--kiosk-side) !important;
+    width: auto !important;
+    min-width: var(--kiosk-side-min) !important;
+    max-width: none !important;
     height: var(--kiosk-board) !important;
     max-height: var(--kiosk-board) !important;
     margin: 0 !important;
