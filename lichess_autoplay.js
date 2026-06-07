@@ -155,3 +155,78 @@
     setInterval(scheduleStatusCheck, SAFETY_CHECK_MS);
 
 })();
+
+(function () {
+    "use strict";
+
+    const DOCK_ID = "kiosk-round-dock";
+
+    function findDirectChild(parent, selector) {
+        return Array.from(parent.children).find(el => el.matches(selector)) || null;
+    }
+
+    function ensureDock(side) {
+        let dock = document.getElementById(DOCK_ID);
+
+        if (!dock) {
+            dock = document.createElement("div");
+            dock.id = DOCK_ID;
+        }
+
+        if (dock.parentElement !== side) {
+            side.appendChild(dock);
+        }
+
+        return dock;
+    }
+
+    function dockRoundWidgets() {
+        const main = document.querySelector("main.round");
+        if (!main) return;
+
+        const side = findDirectChild(main, ".round__side");
+        const app = findDirectChild(main, ".round__app");
+        if (!side || !app) return;
+
+        const dock = ensureDock(side);
+        const gameMeta = side.querySelector(".game__meta");
+
+        if (gameMeta && gameMeta.nextElementSibling !== dock) {
+            side.insertBefore(dock, gameMeta.nextElementSibling);
+        }
+
+        const topClock = findDirectChild(app, ".rclock.rclock-top");
+        const movePanel = findDirectChild(app, ".round__app__table");
+        const topUser = findDirectChild(app, ".ruser-top");
+        const moves = findDirectChild(app, "rm6");
+        const bottomUser = findDirectChild(app, ".ruser-bottom");
+        const bottomClock = findDirectChild(app, ".rclock.rclock-bottom");
+
+        [topClock, topUser, movePanel, moves, bottomUser, bottomClock].forEach(el => {
+            if (el && el.parentElement !== dock) {
+                dock.appendChild(el);
+            }
+        });
+    }
+
+    let dockQueued = false;
+
+    function scheduleDock() {
+        if (dockQueued) return;
+        dockQueued = true;
+
+        requestAnimationFrame(() => {
+            dockQueued = false;
+            dockRoundWidgets();
+        });
+    }
+
+    const dockObserver = new MutationObserver(scheduleDock);
+    dockObserver.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+
+    scheduleDock();
+    setInterval(scheduleDock, 2000);
+})();

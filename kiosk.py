@@ -134,6 +134,40 @@ main.analyse > .analyse__tools {
     overflow: auto !important;
 }
 
+#kiosk-round-dock {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+#kiosk-round-dock .rclock,
+#kiosk-round-dock .round__app__table,
+#kiosk-round-dock .ruser,
+#kiosk-round-dock .material {
+    width: 100% !important;
+    max-width: none !important;
+}
+
+#kiosk-round-dock .round__app__table {
+    height: auto !important;
+}
+
+#kiosk-round-dock .round__app__table:empty {
+    display: none !important;
+}
+
+#kiosk-round-dock rm6 {
+    max-height: calc(var(--kiosk-board) - 300px) !important;
+    overflow: auto !important;
+}
+
+#kiosk-round-dock .ruser,
+#kiosk-round-dock rm6 {
+    width: 100% !important;
+    max-width: none !important;
+}
+
 main.round > .round__side > *,
 main.analyse > .analyse__tools > * {
     width: 100% !important;
