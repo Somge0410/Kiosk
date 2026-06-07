@@ -50,7 +50,60 @@
     function clickControl(button) {
         if (!button || button.disabled) return false;
 
-        button.click();
+        const rect = button.getBoundingClientRect();
+        const clientX = Math.round(rect.left + rect.width / 2);
+        const clientY = Math.round(rect.top + rect.height / 2);
+
+        const pointerInit = {
+            bubbles: true,
+            cancelable: true,
+            composed: true,
+            pointerId: 1,
+            pointerType: "mouse",
+            isPrimary: true,
+            button: 0,
+            buttons: 1,
+            clientX,
+            clientY
+        };
+
+        const mouseDownInit = {
+            bubbles: true,
+            cancelable: true,
+            button: 0,
+            buttons: 1,
+            clientX,
+            clientY
+        };
+
+        const mouseUpInit = {
+            bubbles: true,
+            cancelable: true,
+            button: 0,
+            buttons: 0,
+            clientX,
+            clientY
+        };
+
+        try {
+            if (typeof PointerEvent === "function") {
+                button.dispatchEvent(new PointerEvent("pointerdown", pointerInit));
+            }
+
+            button.dispatchEvent(new MouseEvent("mousedown", mouseDownInit));
+            button.dispatchEvent(new MouseEvent("mouseup", mouseUpInit));
+            button.dispatchEvent(new MouseEvent("click", mouseUpInit));
+
+            if (typeof PointerEvent === "function") {
+                button.dispatchEvent(new PointerEvent("pointerup", {
+                    ...pointerInit,
+                    buttons: 0
+                }));
+            }
+        } catch (_) {
+            return false;
+        }
+
         return true;
     }
 

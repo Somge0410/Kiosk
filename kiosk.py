@@ -12,7 +12,10 @@ from gi.repository import Gtk, WebKit2
 
 URL = "https://lichess.org/@/AaronsEngine/tv"
 
-with open("/home/aaron_elgin/Kiosk/lichess_autoplay.js", "r") as f:
+script_dir = os.path.dirname(os.path.abspath(__file__))
+autoplay_js_path = os.path.join(script_dir, "lichess_autoplay.js")
+
+with open(autoplay_js_path, "r", encoding="utf-8") as f:
     custom_js = f.read()
 
 # Extra CSS: hide clutter and force a stable board + side layout.
