@@ -3,11 +3,13 @@ import os
 # Put environment options before importing GTK/WebKit
 os.environ["WEBKIT_DISABLE_COMPOSITING_MODE"] = "1"
 os.environ["WEBKIT_DISABLE_DMABUF_RENDERER"] = "1"
+os.environ.setdefault("MALLOC_ARENA_MAX", "2")
+os.environ.setdefault("MALLOC_TRIM_THRESHOLD_", "131072")
 
 import gi
 gi.require_version("Gtk", "3.0")
 gi.require_version("WebKit2", "4.1")
-from gi.repository import Gtk, WebKit2
+from gi.repository import GLib, Gtk, WebKit2
 
 
 URL = "https://lichess.org/@/AaronsEngine/tv"
@@ -214,6 +216,32 @@ def try_call(obj, name, *args):
             pass
 
 
+def install_periodic_malloc_trim():
+    # On glibc systems, periodically return free heap pages to the OS.
+    try:
+        import ctypes
+
+        libc = ctypes.CDLL("libc.so.6")
+        malloc_trim = getattr(libc, "malloc_trim", None)
+        if malloc_trim is None:
+            return
+
+        malloc_trim.argtypes = [ctypes.c_size_t]
+        malloc_trim.restype = ctypes.c_int
+    except Exception:
+        return
+
+    def trim_cb():
+        try:
+            malloc_trim(0)
+        except Exception:
+            pass
+
+        return True
+
+    GLib.timeout_add_seconds(30, trim_cb)
+
+
 cache_model = getattr(WebKit2.CacheModel, "DOCUMENT_VIEWER", None)
 if cache_model is not None:
     try_call(web_context, "set_cache_model", cache_model)
@@ -285,6 +313,11 @@ try_set("set_enable_resizable_text_areas", False)
 try_set("set_allow_modal_dialogs", False)
 try_set("set_enable_webgl", False)
 try_set("set_enable_webgl2", False)
+try_set("set_enable_accelerated_2d_canvas", False)
+try_set("set_enable_mediasource", False)
+try_set("set_enable_media_capabilities", False)
+try_set("set_enable_encrypted_media", False)
+try_set("set_enable_site_specific_quirks", False)
 
 # Do NOT disable JavaScript; Lichess will break.
 # You can test this, but it may break piece/board rendering:
@@ -297,5 +330,7 @@ window.add(web_view)
 window.fullscreen()
 window.connect("destroy", Gtk.main_quit)
 window.show_all()
+
+install_periodic_malloc_trim()
 
 Gtk.main()
