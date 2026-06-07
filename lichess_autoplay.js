@@ -22,15 +22,60 @@
     let restartTimer = null;
     let checkTimer = null;
 
+    function isVisible(el) {
+        if (!el || !el.isConnected) return false;
+
+        const style = getComputedStyle(el);
+        if (style.display === "none" || style.visibility === "hidden") return false;
+
+        const rect = el.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+    }
+
+    function getReplayControls() {
+        const buttons = Array.from(document.querySelectorAll("button.fbt.repeatable"))
+            .filter(isVisible);
+
+        if (buttons.length < 4) return null;
+
+        // Lichess order: first, prev, next, last
+        return {
+            first: buttons[0],
+            prev: buttons[1],
+            next: buttons[2],
+            last: buttons[3]
+        };
+    }
+
+    function clickControl(button) {
+        if (!button || button.disabled) return false;
+
+        button.click();
+        return true;
+    }
+
     function pressKey(key, keyCode) {
-        document.body.dispatchEvent(new KeyboardEvent("keydown", {
+        const eventInit = {
             key: key,
             code: key,
             keyCode: keyCode,
             which: keyCode,
             bubbles: true,
             cancelable: true
-        }));
+        };
+
+        const targets = [
+            document.activeElement,
+            document.body,
+            document,
+            window
+        ];
+
+        for (const target of targets) {
+            if (!target || typeof target.dispatchEvent !== "function") continue;
+
+            target.dispatchEvent(new KeyboardEvent("keydown", eventInit));
+        }
     }
 
     function clearTimer(timer) {
@@ -44,11 +89,22 @@
     }
 
     function isAtLastMove() {
-        const moves = document.querySelectorAll("m");
+        const controls = getReplayControls();
+        if (controls) {
+            return controls.next.disabled;
+        }
+
+        const moves = document.querySelectorAll("m, move, rm6 kwdb");
         if (!moves.length) return false;
 
-        const lastMove = moves[moves.length - 1];
-        return lastMove.classList.contains("active");
+        const activeMove =
+            document.querySelector("m.active") ||
+            document.querySelector("move.active") ||
+            document.querySelector("rm6 kwdb.a1t");
+
+        if (!activeMove) return false;
+
+        return activeMove === moves[moves.length - 1];
     }
 
     function stopReplay() {
@@ -85,6 +141,21 @@
             return;
         }
 
+        const controls = getReplayControls();
+
+        if (controls) {
+            if (controls.next.disabled) {
+                replaying = false;
+                replayTimer = null;
+                scheduleRestartFromBeginning();
+                return;
+            }
+
+            clickControl(controls.next);
+            replayTimer = setTimeout(replayStep, STEP_DELAY_MS);
+            return;
+        }
+
         pressKey("ArrowRight", 39);
 
         replayTimer = setTimeout(() => {
@@ -116,7 +187,10 @@
         replaying = true;
 
         // Jump to beginning of the finished game.
-        pressKey("ArrowUp", 38);
+        const controls = getReplayControls();
+        if (!controls || !clickControl(controls.first)) {
+            pressKey("ArrowUp", 38);
+        }
 
         replayTimer = setTimeout(replayStep, START_DELAY_MS);
     }
