@@ -97,6 +97,30 @@ main.analyse > .analyse__board {
     max-height: none !important;
 }
 
+/* Live TV layout puts clocks/users/moves in a second column inside .round__app.
+   Hide those inner widgets so the actual chessboard can use the full square. */
+main.round > .round__app {
+    display: block !important;
+}
+
+main.round > .round__app > .round__app__board.main-board {
+    width: var(--kiosk-board) !important;
+    height: var(--kiosk-board) !important;
+    max-width: none !important;
+    max-height: none !important;
+    margin: 0 !important;
+}
+
+main.round > .round__app > :not(.round__app__board.main-board) {
+    display: none !important;
+}
+
+main.round > .round__app > .round__app__board.main-board .cg-wrap,
+main.round > .round__app > .round__app__board.main-board cg-board {
+    width: 100% !important;
+    height: 100% !important;
+}
+
 main.round > .round__side,
 main.analyse > .analyse__tools {
     grid-column: 2 !important;
