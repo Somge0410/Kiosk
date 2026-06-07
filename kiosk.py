@@ -17,14 +17,18 @@ with open("/home/aaron_elgin/Kiosk/lichess_autoplay.js", "r") as f:
 
 # Extra CSS: hide heavy/nonessential UI parts and reduce animations
 custom_css = custom_css = """
+/* Remove top navigation */
 #top,
 .site-title,
 .site-nav,
 .site-buttons,
 .site-menu,
 header,
-nav,
-.round__side,
+nav {
+    display: none !important;
+}
+
+/* Remove some side/extra panels */
 .round__underboard,
 .underboard,
 .mchat,
@@ -32,39 +36,61 @@ nav,
 .crosstable,
 .tv-history,
 .ad,
-.ads {
+.ads,
+.tour__standing,
+.streamer-box {
     display: none !important;
 }
 
-# html,
-# body {
-#     margin: 0 !important;
-#     padding: 0 !important;
-#     overflow: hidden !important;
-# }
+/* Remove page margins/padding */
+html,
+body {
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+}
 
+/* Make the main Lichess area use the whole screen */
 main,
 .round {
     margin: 0 !important;
     padding: 0 !important;
     width: 100vw !important;
-    height: 100vh !important;
     max-width: none !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
+    height: 100vh !important;
 }
 
+/* Try to make the board as large as possible while keeping right panel */
+.round {
+    display: grid !important;
+    grid-template-columns: 1fr min(88vh, 72vw) 350px 1fr !important;
+    grid-template-rows: 100vh !important;
+    column-gap: 12px !important;
+    align-items: center !important;
+}
+
+/* Board area */
 .round__app {
-    width: min(96vw, 96vh) !important;
-    height: min(96vw, 96vh) !important;
+    grid-column: 2 !important;
+    width: min(88vh, 72vw) !important;
+    height: min(88vh, 72vw) !important;
     max-width: none !important;
     max-height: none !important;
 }
 
+/* Right panel: clocks / moves */
+.round__side {
+    grid-column: 3 !important;
+    width: 350px !important;
+    max-width: 350px !important;
+    margin: 0 !important;
+}
+
+/* Reduce animations */
 * {
     animation: none !important;
     transition: none !important;
+    scroll-behavior: auto !important;
 }
 """
 
