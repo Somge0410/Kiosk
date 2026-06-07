@@ -15,22 +15,23 @@ URL = "https://lichess.org/@/AaronsEngine/tv"
 with open("/home/aaron_elgin/Kiosk/lichess_autoplay.js", "r") as f:
     custom_js = f.read()
 
-# Extra CSS: hide heavy/nonessential UI parts and reduce animations
-custom_css = custom_css = """
-/* Remove top navigation */
+# Extra CSS: hide clutter and force a stable board + side layout.
+custom_css = """
+/* Remove top navigation and non-kiosk clutter. */
 #top,
 .site-title,
 .site-nav,
 .site-buttons,
 .site-menu,
 header,
-nav {
-    display: none !important;
-}
-
-/* Remove some side/extra panels */
+nav,
 .round__underboard,
-.underboard,
+.round__underchat,
+.analyse__underboard,
+.analyse__round-training,
+.analyse__controls,
+.analyse__side,
+.chat__members,
 .mchat,
 .chat,
 .crosstable,
@@ -42,7 +43,6 @@ nav {
     display: none !important;
 }
 
-/* Remove page margins/padding */
 html,
 body {
     margin: 0 !important;
@@ -50,40 +50,63 @@ body {
     overflow: hidden !important;
 }
 
-/* Make the main Lichess area use the whole screen */
-main,
-.round {
+:root {
+    --kiosk-pad: 8px;
+    --kiosk-gap: 12px;
+    --kiosk-side: clamp(260px, 23vw, 330px);
+    --kiosk-board: min(
+        calc(100vh - 16px),
+        calc(100vw - var(--kiosk-side) - 28px)
+    );
+}
+
+/* Apply one consistent two-column layout to both live and finished game pages. */
+main.round,
+main.analyse {
     margin: 0 !important;
-    padding: 0 !important;
+    padding: var(--kiosk-pad) !important;
     width: 100vw !important;
     max-width: none !important;
     height: 100vh !important;
-}
-
-/* Try to make the board as large as possible while keeping right panel */
-.round {
+    box-sizing: border-box !important;
     display: grid !important;
-    grid-template-columns: 1fr min(88vh, 72vw) 350px 1fr !important;
-    grid-template-rows: 100vh !important;
-    column-gap: 12px !important;
-    align-items: center !important;
+    grid-template-columns: var(--kiosk-board) var(--kiosk-side) !important;
+    grid-template-rows: var(--kiosk-board) !important;
+    column-gap: var(--kiosk-gap) !important;
+    justify-content: center !important;
+    align-content: center !important;
+    align-items: start !important;
+    overflow: hidden !important;
 }
 
-/* Board area */
-.round__app {
-    grid-column: 2 !important;
-    width: min(88vh, 72vw) !important;
-    height: min(88vh, 72vw) !important;
+main.round > .round__app,
+main.analyse > .analyse__board {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    width: var(--kiosk-board) !important;
+    height: var(--kiosk-board) !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
     max-width: none !important;
     max-height: none !important;
 }
 
-/* Right panel: clocks / moves */
-.round__side {
-    grid-column: 3 !important;
-    width: 350px !important;
-    max-width: 350px !important;
+main.round > .round__side,
+main.analyse > .analyse__tools {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    width: var(--kiosk-side) !important;
+    max-width: var(--kiosk-side) !important;
+    height: var(--kiosk-board) !important;
+    max-height: var(--kiosk-board) !important;
     margin: 0 !important;
+    overflow: auto !important;
+}
+
+main.round > .round__side > *,
+main.analyse > .analyse__tools > * {
+    width: 100% !important;
+    box-sizing: border-box !important;
 }
 
 /* Reduce animations */
